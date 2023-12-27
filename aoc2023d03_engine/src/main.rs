@@ -4,8 +4,10 @@ fn main() {
     let engine_map: Vec<&str> = engine.lines().collect();
     println!("{:#?}", engine_map);
     let mut parts: Vec<Part>;
+    let mut symbols: Vec<Symbol>;
     parts = get_parts_from_map(&engine_map);
-    update_part_symbol_touch(&engine_map, &mut parts);
+    symbols = get_symbols_from_map(&engine_map);
+    update_part_symbol_touch(&engine_map, &mut parts, &mut symbols);
     let mut part_real = 0;
     let mut part_total = 0;
     for p in &parts {
@@ -18,12 +20,13 @@ fn main() {
         }
     }
     println!(
-        "Found {} parts real:{part_real} total:{part_total}",
-        parts.len()
+        "Found {} parts and {} symbols, real:{part_real} total:{part_total}",
+        parts.len(),
+        symbols.len(),
     );
 }
 
-fn update_part_symbol_touch(e: &Vec<&str>, parts: &mut Vec<Part>) {
+fn update_part_symbol_touch(e: &Vec<&str>, parts: &mut Vec<Part>, symbols: &mut Vec<Symbol>) {
     let max_y = e.len();
     let max_x = e[0].len();
     for mut p in parts {
@@ -70,10 +73,32 @@ fn update_part_symbol_touch(e: &Vec<&str>, parts: &mut Vec<Part>) {
                 "ERROR getting char x={x} y={y} max_x={max_x} {:#?}",
                 p
             )));
-            if  let XyType::Symbol(c) = check_type {
+            if let XyType::Symbol(c) = check_type {
                 p.touch_symbol = true;
                 p.symbol_count += 1;
             }
+        }
+    }
+}
+
+fn get_symbols_from_map(map: &Vec<&str>) -> Vec<Symbol> {
+    let mut symbols = vec![];
+    for (y, line) in map.iter().enumerate() {
+        get_symbols_from_str(&mut symbols, y, line);
+    }
+    symbols
+}
+fn get_symbols_from_str(p: &mut Vec<Symbol>, y: usize, line: &str) {
+    for (x, c) in line.chars().enumerate() {
+        if let XyType::Symbol(c) = get_type(c) {
+            p.push(Symbol {
+                symbol: c,
+                y: y + 1,
+                x: x + 1,
+                is_star: if c == '*' { true } else { false }, // This is a symbol, * ?
+                part_numbers: vec![],
+                gear_ratio: 0,
+            });
         }
     }
 }
@@ -148,6 +173,16 @@ struct Part {
     symbol_count: usize,
 }
 
+#[derive(Debug, PartialEq)]
+struct Symbol {
+    symbol: char,
+    x: usize,
+    y: usize,
+    is_star: bool,
+    part_numbers: Vec<usize>,
+    gear_ratio: usize,
+}
+
 #[cfg(test)]
 mod tests {
     use crate::*;
@@ -155,8 +190,9 @@ mod tests {
     fn test_right() {
         let engine_map = vec!["467..114*."];
         let mut parts: Vec<Part>;
+        let mut symbols: Vec<Symbol> = vec![];
         parts = get_parts_from_map(&engine_map);
-        update_part_symbol_touch(&engine_map, &mut parts);
+        update_part_symbol_touch(&engine_map, &mut parts, &mut symbols);
         assert_eq!(parts.len(), 2);
         assert_eq!(
             parts[0],
@@ -185,8 +221,9 @@ mod tests {
     fn test_down_right() {
         let engine_map = vec!["467...114.", "...*......"];
         let mut parts: Vec<Part>;
+        let mut symbols: Vec<Symbol> = vec![];
         parts = get_parts_from_map(&engine_map);
-        update_part_symbol_touch(&engine_map, &mut parts);
+        update_part_symbol_touch(&engine_map, &mut parts, &mut symbols);
         assert_eq!(parts.len(), 2);
         assert_eq!(
             parts[0],
@@ -221,8 +258,9 @@ mod tests {
             "..........",
         ];
         let mut parts: Vec<Part>;
+        let mut symbols: Vec<Symbol> = vec![];
         parts = get_parts_from_map(&engine_map);
-        update_part_symbol_touch(&engine_map, &mut parts);
+        update_part_symbol_touch(&engine_map, &mut parts, &mut symbols);
         assert_eq!(parts.len(), 3);
         assert_eq!(
             parts[1],
