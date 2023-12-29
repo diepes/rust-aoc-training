@@ -2,6 +2,7 @@ pub mod nom_parse;
 
 pub fn run(input: &str) {
     println!("input \n{}", input);
+    println!("inputs ^^^^ \n");
     let almanac = nom_parse::parse_map(&input);
     println!("map \n{:?}", almanac);
 }
