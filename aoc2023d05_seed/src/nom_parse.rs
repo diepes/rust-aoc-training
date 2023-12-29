@@ -3,13 +3,13 @@
 use nom::{
     bytes::complete::tag,
     character,
-    multi::{many0, separated_list1},
-    sequence::{separated_pair, tuple},
+    multi::separated_list1, //many0
+    sequence::tuple,        //separated_pair
     IResult,
 };
 #[derive(Debug)]
 pub struct Almanac {
-    pub seeds: Vec<u32>,
+    pub seeds: Vec<u64>,
     pub maps: Vec<Map>,
 }
 #[derive(Debug, PartialEq)]
@@ -35,8 +35,7 @@ pub struct MapEntry {
     pub src: u64,
     pub dst: u64,
     pub range: u64,
-    // src_below: u64,
-    src_above: u64,
+    pub src_max: u64,
 }
 impl MapEntry {
     pub fn new(src: u64, dst: u64, range: u64) -> MapEntry {
@@ -44,8 +43,7 @@ impl MapEntry {
             src: src,
             dst: dst,
             range: range,
-            // src_below: src - 1,     // 1 less than start of range
-            src_above: src + range, // 1 more than largest value
+            src_max: src + range - 1, // 1 more than largest value
         }
     }
 }
@@ -57,10 +55,10 @@ pub fn parse_map(input_lines: &str) -> Almanac {
     };
     let mut input; //define so next step no let, add val to exising var.
     (input, almanac.seeds) = parse_seeds(&input_lines).expect("ERROR Parsing seeds");
-    println!("# parse_map seeds {:#?}", almanac.seeds);
+    //println!("# parse_map seeds {:#?}", almanac.seeds);
     //println!("# input1: {:#?}",input);
     (input, almanac.maps) = parse_maps_full(&input).expect("ERROR Parsing map's");
-    println!("# parse_map maps {:#?}", almanac.maps);
+    //println!("# parse_map maps {:#?}", almanac.maps);
     assert_eq!(input, "", "After parsing nothing should be left");
 
     almanac
@@ -68,8 +66,7 @@ pub fn parse_map(input_lines: &str) -> Almanac {
 
 fn parse_maps_full(input: &str) -> IResult<&str, Vec<Map>> {
     // map blocks
-    let mut maps: Vec<Map>;
-    let (input, m_from) = character::complete::multispace0(input)?; // eat space and newline
+    let (input, _newline) = character::complete::multispace0(input)?; // eat space and newline
     let (input, maps) = separated_list1(
         tuple((character::complete::newline, character::complete::newline)),
         parse_map_single_block,
@@ -101,21 +98,17 @@ fn parse_map_entry(input: &str) -> IResult<&str, MapEntry> {
     // parse "37 52 2" -> (37, 52, 2)
     let (input, out) = separated_list1(tag(" "), character::complete::u64)(input)?;
     assert_eq!(out.len(), 3, "[[3 values for MapEntry]]");
-    let entry = MapEntry::new(out[0], out[1], out[2]);
+    let entry = MapEntry::new(out[1], out[0], out[2]);
     Ok((input, entry))
 }
 
-fn parse_seeds(input: &str) -> IResult<&str, Vec<u32>> {
+fn parse_seeds(input: &str) -> IResult<&str, Vec<u64>> {
     let (input, _) = character::complete::multispace0(input)?;
     let (input, _) = tag("seeds:")(input)?;
     let (input, _) = character::complete::multispace1(input)?;
-    let (input, seed_list) = separated_list1(tag(" "), character::complete::u32)(input)?;
+    let (input, seed_list) = separated_list1(tag(" "), character::complete::u64)(input)?;
     let (input, _newline) = nom::character::complete::line_ending(input)?;
     Ok((input, seed_list))
-}
-fn nom_test_1(input: &str) -> IResult<&str, &str> {
-    let (input, out) = nom::sequence::preceded(tag("abc"), tag("efg"))(input)?;
-    Ok((input, out))
 }
 
 #[cfg(test)]
@@ -141,7 +134,10 @@ fertilizer-to-water map:
         let m2 = MapEntry::new(52, 50, 48);
         let m3 = MapEntry::new(49, 53, 8);
         let v1 = vec![m1, m2];
-        let map = vec![Map::new("seed-to-soil", "seed", "soil", v1), Map::new("fertilizer-to-water", "fertilizer", "water", vec![m3])];
+        let map = vec![
+            Map::new("seed-to-soil", "seed", "soil", v1),
+            Map::new("fertilizer-to-water", "fertilizer", "water", vec![m3]),
+        ];
         assert_eq!(out, map);
         assert_eq!(input, "\n");
     }
