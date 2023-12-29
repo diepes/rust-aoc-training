@@ -3,13 +3,13 @@
 use nom::{
     bytes::complete::tag,
     character,
-    multi::separated_list1, //many0
-    sequence::tuple,        //separated_pair
+    multi::separated_list1,      //many0
+    sequence::{preceded, tuple}, //separated_pair
     IResult,
 };
 #[derive(Debug)]
 pub struct Almanac {
-    pub seeds: Vec<u64>,
+    pub seeds: Vec<(u64, u64)>,
     pub maps: Vec<Map>,
 }
 #[derive(Debug, PartialEq)]
@@ -102,11 +102,17 @@ fn parse_map_entry(input: &str) -> IResult<&str, MapEntry> {
     Ok((input, entry))
 }
 
-fn parse_seeds(input: &str) -> IResult<&str, Vec<u64>> {
+fn parse_seeds(input: &str) -> IResult<&str, Vec<(u64, u64)>> {
     let (input, _) = character::complete::multispace0(input)?;
     let (input, _) = tag("seeds:")(input)?;
     let (input, _) = character::complete::multispace1(input)?;
-    let (input, seed_list) = separated_list1(tag(" "), character::complete::u64)(input)?;
+    let (input, seed_list) = separated_list1(
+        tag(" "),
+        tuple((
+            character::complete::u64,
+            preceded(tag(" "), character::complete::u64),
+        )),
+    )(input)?;
     let (input, _newline) = nom::character::complete::line_ending(input)?;
     Ok((input, seed_list))
 }
