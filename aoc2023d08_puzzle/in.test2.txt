@@ -1,0 +1,10 @@
+LR
+
+FFA = (FFB, XXZ)
+FFB = (XXZ, FFZ)
+FFZ = (FFB, XXZ)
+HHA = (HHB, XXZ)
+HHB = (HHC, HHC)
+HHC = (HHZ, HHZ)
+HHZ = (HHB, HHB)
+XXZ = (XXZ, XXZ)
