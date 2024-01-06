@@ -1,0 +1,192 @@
+fn main() {
+    let input = std::fs::read_to_string("in.txt").expect("Err loading file");
+    println!("Hello, world! {}", input.len());
+    let data = parse(&input);
+    //println!("Data {:?}", data);
+    let num: u64 = 100_000_000;
+    // Size of one stack frame for `factorial()` was measured experimentally
+    let _ = std::thread::Builder::new()
+        .stack_size(num as usize * 0xFF)
+        .spawn(move || {
+            run(&data);
+        })
+        .unwrap()
+        .join();
+}
+fn run(data: &Data) {
+    let mut sum_next = 0;
+    let mut sum_prev = 0;
+    // println!("{:?}", data.data.iter().map(|d| d.len()).collect::<Vec<usize>>());
+    // panic!("Stop");
+    for (h, history) in data.data.iter().enumerate() {
+        let mut debug = format!("\n\nStart next {h} lvl:0 len/col:{}\n", history.len());
+        let mut cache: [Option<isize>; 44] = [None; 44];
+        let next_val = calc_hist(h, 0, history.len() as isize, &data, &mut cache, &mut debug);
+        let mut debug = format!("\n\nStart prev {h} {}\n", history.len());
+        let mut cache: [Option<isize>; 44] = [None; 44];
+        let prev_val = calc_hist(h, 0, -1, &data, &mut cache, &mut debug);
+        sum_next += next_val;
+        sum_prev += prev_val;
+        println!(
+            " History {h} len:{len}  last:{last}  next: {next_val}   prev: {prev_val}",
+            h = h,
+            len = history.len(),
+            last = history.last().expect("Empty history?"),
+        );
+    }
+    println!("Sum_next: {sum_next}=1,969,958,987   Sum_prev: {sum_prev}");
+}
+
+fn update_cache(v: isize, pos: Option<isize>, cache: &mut [Option<isize>; 44]) {
+    if pos.is_some() {
+        cache[pos.unwrap() as usize] = Some(v);
+    };
+}
+
+fn calc_hist(
+    hist: usize,
+    lvl: isize,
+    col: isize,
+    data: &Data,
+    mut cache: &mut [Option<isize>; 44],
+    debug: &mut String,
+) -> isize {
+    // row is diagonal
+    // y   0   1   2   3   x
+    //   y   1   2   3   x
+    //     y   2   3   x
+    //1. return data in src set
+    //println!("calc_hist looking for data_line{hist}, lvl:{lvl}, col:{col}");
+
+    /*  check cache
+    (L,C) (0,-1)[0] & (0,len)[1]
+    (L,C) (1,0)[2]  & (1,len-1)[3]
+    (L,C) (2,1)[4]  & (2,len-2)[5]
+    */
+    cache[0] = Some(20);
+    let len = data.data[hist].len() as isize;
+    let mut pos: Option<isize> = None;
+    if col == (lvl - 1) {
+        pos = Some(lvl * 2);
+    };
+    if col == (len - lvl) {
+        pos = Some(lvl * 2 + 1);
+    }
+    if pos.is_some() {
+        if let Some(val) = cache[pos.unwrap() as usize] {
+            debug.push_str(&format!(" [cache-HIT] "));
+            println!(" [cache-HIT !! ");
+            return val;
+        };
+    }
+
+    //println!("Debug: {debug}");
+    //debug.push_str(&format!(" [lvl:{lvl}_col:{col}__"));
+    if lvl == 0 {
+        if col >= 0 && col < len {
+            debug.push_str(&format!("Data_{}]", data.data[hist][col as usize]));
+            let v = data.data[hist][col as usize];
+            update_cache(v, pos, cache);
+            return v;
+        } else if col == -1 {
+            //new to left (neg)
+            debug.push_str(&format!("RD__"));
+            let right = calc_hist(hist, lvl, col + 1, &data, &mut cache, debug);
+            let below_right = calc_hist(hist, lvl + 1, col + 1, &data, &mut cache, debug);
+            debug.push_str(&format!("RD]"));
+            let v = right - below_right;
+            update_cache(v, pos, cache);
+            return v;
+        } else if col == len {
+            // new value to right
+            debug.push_str(&format!("LD__"));
+            let left = calc_hist(hist, lvl, col - 1, &data, &mut cache, debug);
+            let below_left = calc_hist(hist, lvl + 1, col, &data, &mut cache, debug);
+            debug.push_str(&format!("LD]"));
+            let v = left + below_left;
+            update_cache(v, pos, cache);
+            return v;
+        } else {
+            panic!(" Invalid lvl == 0 col: {col}");
+        }
+    }
+    assert!(lvl > 0);
+    assert!(
+        col >= lvl as isize - 1,
+        "For lvl>0 we lose first column ever lvl "
+    );
+    if lvl >= len || lvl > 12 {
+        debug.push_str(&format!("ZZ]"));
+        return 0;
+    };
+    // println!("Debug lvl:{lvl} col:{col} len: {len}",len=data.data[hist].len());
+    //2. lvl > 0 but in piramid we can calc from below
+    if col >= lvl && col < (len - lvl) {
+        debug.push_str(&format!("UL__"));
+        let above_left = calc_hist(hist, lvl - 1, col - 1, &data, &mut cache, debug);
+        let above = calc_hist(hist, lvl - 1, col, &data, &mut cache, debug); // cant do this
+        debug.push_str(&format!("UL]"));
+        let v = above - above_left;
+        update_cache(v, pos, cache);
+        return v;
+    } else if col == lvl - 1 {
+        // left side use right and below_right(lvl +1)
+        debug.push_str(&format!("DR__"));
+        let right = calc_hist(hist, lvl, col + 1, &data, &mut cache, debug);
+        let below_right = calc_hist(hist, lvl + 1, col + 1, &data, &mut cache, debug);
+        debug.push_str(&format!("DR]"));
+        let v = right - below_right;
+        update_cache(v, pos, cache);
+        return v;
+    } else if col >= len - lvl {
+        debug.push_str(&format!("LD__"));
+        let left = calc_hist(hist, lvl, col - 1, &data, &mut cache, debug);
+        let below_left = calc_hist(hist, lvl + 1, col, &data, &mut cache, debug); // cant do this
+        debug.push_str(&format!("LD]"));
+        let v = left + below_left;
+        update_cache(v, pos, cache);
+        return v;
+    } else {
+        panic!("The end");
+    }
+}
+#[derive(Debug)]
+struct Data {
+    data: Vec<Vec<isize>>,
+}
+fn parse(input: &str) -> Data {
+    Data {
+        data: input
+            .lines()
+            .map(|l| l.split(" ").map(|v| v.parse().expect("Not num?")).collect())
+            .collect(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_cal_hist() {
+        let data = Data {
+            data: vec![vec![0, 3, 6, 9, 12, 15]],
+        };
+        let mut debug = "".to_string();
+        let hist_set = 0;
+        // lvl0 lookup
+        assert_eq!(calc_hist(hist_set, 0, 1, &data, &mut debug), 3);
+        assert_eq!(calc_hist(hist_set, 0, 5, &data, &mut debug), 15);
+        // lvl1
+        assert_eq!(calc_hist(hist_set, 1, 1, &data, &mut debug), 3);
+        assert_eq!(calc_hist(hist_set, 1, 4, &data, &mut debug), 3);
+        debug = "test 1,5".to_string();
+        assert_eq!(calc_hist(hist_set, 1, 5, &data, &mut debug), 3);
+        // assert_eq!(calc_hist(hist_set, 1, 6, &data), 3);
+        // // lvl2
+        // assert_eq!(calc_hist(hist_set, 2, 2, &data), 0);
+
+        // assert_eq!(calc_hist(hist_set, 0, 5, &data), 15);
+        // assert_eq!(calc_hist(hist_set, 0, 6, &data), 18); // new value
+        // assert_eq!(calc_hist(hist_set, 0, 7, &data), 21); // new value
+    }
+}

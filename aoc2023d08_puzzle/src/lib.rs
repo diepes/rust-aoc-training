@@ -1,5 +1,5 @@
 use nom;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 mod bruteforcetwo;
 
 pub fn run() {
@@ -12,7 +12,7 @@ pub fn run() {
     println!("puzzle_map: {puzzle_map:#?}");
     println!("directions: {:?}", (&puzzle_map.directions));
     let mut count = 0_u64;
-    let mut next_names: Vec<String> = puzzle_map
+    let next_names: Vec<String> = puzzle_map
         .nodes
         .iter()
         .filter(|n| n.node_name.ends_with('A'))
@@ -29,20 +29,19 @@ pub fn run() {
     let mut pick = Directions::new(&puzzle_map.directions);
     let mut flag_warp = false;
     let mut show_next: u64 = 0;
-    let mut warp_grp: Vec<u64> = vec![];
-    let mut warp_max = (0_u64,0_u64); // step & run instance
     loop {
         let t_loop = Instant::now();
         let mut count_loop_z = run_count; //number of parralell runs
-        let (p, p_index) = pick.next().unwrap();
+        let (p, _p_index) = pick.next().unwrap();
         let (mut next_step_small, mut next_step_large) = (0_u64, 0_u64);
         let mut debug_small = "".to_string();
         let mut count_at_end = 0;
         for i in 0..run_count {
             assert_eq!(runs[i].run_id, i, "Check run id");
-            let (mut step, mut got_step_size, run_name, mut position) = runs[i].get_current_step();
+            let (mut step, mut got_step_size, _run_name, mut _position) =
+                runs[i].get_current_step();
             while step < count {
-                (step, got_step_size, position) = runs[i].get_next_step(&puzzle_map, p);
+                (step, got_step_size, _position) = runs[i].get_next_step(&puzzle_map, p);
             }
             assert!(step >= count, "Step < count ??");
             if next_step_small == 0 || step <= next_step_small {
@@ -61,14 +60,9 @@ pub fn run() {
                 count_at_end += 1;
             }
         }
-        if flag_warp && warp_grp.len() == 0 {
-            warp_grp = runs.iter().enumerate().map(|(j,r)| r.step_size ).collect();
-            warp_max = runs.iter().enumerate().fold((0_u64,0_u64),|acc,(j,r)| if r.step_size > acc.0 { (r.step_size,j as u64)} else { acc } );
-            println!("warp {:?} max:{:?}",warp_grp, warp_max);
-        };
         //
         if (count_at_end > 1 && flag_warp) || count > show_next {
-            show_next += 5_000_000_000;
+            show_next += 50_000_000;
             if count_loop_z == 0 {
                 flag_warp = true;
             };
@@ -97,7 +91,9 @@ pub fn run() {
             break;
         }
         if flag_warp {
-            (count , _, _) = runs[warp_max.1 as usize].get_next_step(&puzzle_map,'👍');
+            println!(" Now bruteforcing the awnser from discoverd cycles !!!");
+            bruteforcetwo::doit(runs);
+            panic!("Done");
         } else {
             count += 1;
         }
@@ -109,7 +105,7 @@ pub fn run() {
 }
 
 #[derive(Debug)]
-struct Run {
+pub struct Run {
     // single run
     run_id: usize,
     node_current: String,
@@ -150,7 +146,7 @@ impl Run {
             self.step_current += self.step_size;
             return (self.step_current, self.got_step_size, self.loop_position);
         }
-        let l = self.node_ends.len();
+        // let l = self.node_ends.len();
         let (new_name, position) = puzzle.lookup(&self.node_current, lookup_direction);
         self.node_current = new_name.clone();
         self.step_current += 1;
@@ -200,7 +196,7 @@ impl Puzzle<'_> {
             .nodes
             .iter()
             .enumerate()
-            .find(|(j, n)| n.node_name == node_name)
+            .find(|(_j, n)| n.node_name == node_name)
             .map(|(j, n)| {
                 if dir == 'L' {
                     (n.l.to_string(), j)
@@ -316,7 +312,7 @@ mod tests {
         assert_eq!(r.get_next_step(&puzzle, 'L'), (8, true, 2));
         assert_eq!(r.get_next_step(&puzzle, 'R'), (10, true, 2));
         assert_eq!(r.node_current, "ZZZ");
-        assert_eq!(r.jump_step_to(21),22);
+        assert_eq!(r.jump_step_to(21), 22);
         assert_eq!(r.get_current_step(), (22, true, "ZZZ", 2));
     }
     #[test]
