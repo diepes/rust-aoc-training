@@ -4,12 +4,14 @@ fn main() {
     let data = parse(&input);
     println!("Data line1 {:?}", data.data[0]);
     let mut total = 0;
+    let mut total2 = 0;
     for (l, d) in data.data.iter().enumerate() {
-        let answer = run(&d);
+        let (answer,answer2) = run(&d);
         total += answer;
-        println!("Answer: {l} {answer}");
+        total2 += answer2;
+        println!("Answer: {l} {answer} {answer2}");
     }
-    println!("Total: {total} === 1969958987");
+    println!("Total: {total} === 1969958987  total2: {total2}");
     // let num: u64 = 100_000_000;
     // Size of one stack frame for `factorial()` was measured experimentally
     // let _ = std::thread::Builder::new()
@@ -21,7 +23,7 @@ fn main() {
     //     .join();
 }
 
-fn run(data: &Vec<i64>) -> i64 {
+fn run(data: &Vec<i64>) -> (i64, i64) {
     // rows of numbers
     let len = data.len();
     let mut new_num: Vec<Vec<i64>> = vec![]; //.iter().map(|v| v.clone()).collect()];
@@ -40,10 +42,16 @@ fn run(data: &Vec<i64>) -> i64 {
     }
     // calc new num
     let mut new_value: i64 = data.iter().last().unwrap().clone();
+    let mut new2: i64 = data[0];
+    let mut sign: i64 = -1;
     for l in new_num.iter() {
         new_value += l.last().unwrap().clone();
+
+        new2 += l[0] * sign;
+        sign = sign * -1; //flip sign
     }
-    new_value
+    
+    (new_value, new2)
 }
 #[derive(Debug)]
 struct Data {
@@ -64,7 +72,9 @@ mod tests {
     #[test]
     fn test_run() {
         let data = vec![0, 3, 6, 9, 12, 15];
+        //                    -3  3  3  3  3
+        //                         0  0  0
         // lvl0 lookup
-        assert_eq!(run(&data), 18);
+        assert_eq!(run(&data), (18, -3));
     }
 }
