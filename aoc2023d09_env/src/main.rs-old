@@ -162,12 +162,7 @@ fn parse(input: &str) -> Data {
             .collect(),
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn test_cal_hist() {
+test_cal_hist() {
         let data = Data {
             data: vec![vec![0, 3, 6, 9, 12, 15]],
         };
