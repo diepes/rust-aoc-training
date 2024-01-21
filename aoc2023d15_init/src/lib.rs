@@ -42,8 +42,8 @@ fn apply_data_to_boxs(data: &Vec<Instruction>, boxs: &mut [Vec<Instruction>; 256
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-struct Instruction {
-    full: String,
+struct Location {
+    ch: char,
     label: String,
     label_hash: u32,
     focal: u32,
@@ -78,12 +78,13 @@ fn read_data(file_name: &str) -> Vec<Instruction> {
     }
     data
 }
-fn calc_hash(input: &str) -> u32 {
-    let mut hash = 0;
-    for ch in input.chars() {
-        let ascii = ch as u32;
-        hash = ((hash + ascii) * 17) % 256;
-        // println!("ch: {ch} ascii: {ascii} hash: {hash}")
+
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_1() {
     }
-    hash
 }
